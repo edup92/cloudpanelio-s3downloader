@@ -11,26 +11,10 @@ This script automates the retrieval of backup archives (`backup.tar`) from an AW
 
 ### Script Workflow
 
-1. **Validate Arguments**
-
-   * The script checks that a repository name is provided. If not, it prints usage instructions and exits.
-
-2. **Identify Latest Backup Date**
-
-   * Lists all subfolders under `backups/`, extracts the date-formatted names, sorts them, and selects the most recent (`YYYY-MM-DD`).
-
-3. **Construct Base S3 Path**
-
-   * Combines the bucket name, latest date folder, provided repository name, and the `home` directory.
-
-4. **Iterate Through Clients**
-
-   * Lists each subfolder (client) under the `home` directory.
-   * For each client folder, it downloads the `backup.tar` file and renames it to `<client-name>.tar` in the local directory.
-
-5. **Completion**
-
-   * After processing all client backups, the script outputs a confirmation message.
+- Finds the most recent YYYY-MM-DD/ folder under backups/ in your S3 bucket.
+- Acceses the only subdirectory and then the home/ folder inside it.
+- Moves each backup.tar from client subfolders up to the YYYY-MM-DD folder, renaming them to <client_name>.tar.
+- Deletes the intermediate subdirectory structure, leaving only the .tar files in the date folder.
 
 ### How to run
 
