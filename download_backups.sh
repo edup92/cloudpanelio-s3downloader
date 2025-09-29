@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./download_backups.sh <s3-bucket-name>
+# Usage: ./download_backups.sh <source-s3-bucket>
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <s3-bucket-name>"
+  echo "Usage: $0 <s3-bucket>"
   exit 1
 fi
 
-# Bucket passed as first argument
+# Bucket passed as argument
 BUCKET="$1"
 
 # 1) Get the most recent date directory in backups/
@@ -41,12 +41,17 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   | while read -r client_dir; do
       echo "Processing client: $client_dir"
 
-      # 5) Download backup.tar and rename it to <client_dir>.tar
-      aws s3 cp \
+      # 5) Move (rename) backup.tar to home root as <client_dir>.tar
+      aws s3 mv \
         "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
-        "${client_dir}.tar"
+        "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/${client_dir}.tar"
 
-      echo "Downloaded and renamed: ${client_dir}.tar"
+      echo "Moved and renamed: ${client_dir}.tar"
     done
 
-echo "All backups downloaded to $(pwd)"
+# 6) Remove all remaining subdirectories under home, leaving only .tar files
+aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
+  --recursive \
+  --exclude "*.tar"
+
+echo "Cleanup complete: only .tar files remain under home."
