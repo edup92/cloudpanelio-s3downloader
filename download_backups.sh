@@ -1,20 +1,22 @@
+```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
 # Usage: ./download_backups.sh <s3-bucket-name>
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <s3-bucket-name>"
   exit 1
 fi
 
+# Bucket passed as argument
 BUCKET="$1"
 
-acortar_url() {
-  curl -s "https://tinyurl.com/api-create.php?url=$1"
-}
-
-# 1) Get the most recent date directory under backups/
-latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" | awk '{print $2}' | sed 's:/$::' | sort | tail -n1)
+# 1) Get the most recent date directory in backups/
+latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" \
+  | awk '{print $2}' \
+  | sed 's:/$::' \
+  | sort \
+  | tail -n1)
 
 if [[ -z "$latest_date_dir" ]]; then
   echo "No date directories found in s3://$BUCKET/backups/"
@@ -24,26 +26,32 @@ fi
 echo "Latest date directory: $latest_date_dir"
 
 # 2) Get the only subdirectory inside that date directory
-first_subdir=$(aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/" | awk '{print $2}' | sed 's:/$::')
-
-if [[ -z "$first_subdir" ]]; then
-  echo "No subdirectory found in s3://$BUCKET/backups/$latest_date_dir/"
-  exit 1
-fi
+first_subdir=$(aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/" \
+  | awk '{print $2}' \
+  | sed 's:/$::')
 
 echo "First subdirectory: $first_subdir"
 
-# 3) Define 'home' directory inside it
+# 3) Define the "home" directory inside of it
 home_dir="home"
 
 # 4) Iterate over each client directory under backups/<date>/<subdir>/home/
 aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
-  | awk '{print $2}' | sed 's:/$::' | while read -r client_dir; do
-  echo "Processing client: $client_dir"
+  | awk '{print $2}' \
+  | sed 's:/$::' \
+  | while read -r client_dir; do
+      echo "Processing client: $client_dir"
 
-  tar_path="backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar"
-  presign_url=$(aws s3 presign "s3://$BUCKET/$tar_path")
+      # 5) Move and rename backup.tar to the date root as <client_dir>.tar
+      aws s3 mv \
+        "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
+        "s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
 
-  short_url=$(acortar_url "$presign_url")
-  echo "$short_url"
-done
+      echo "Moved and renamed to s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
+    done
+
+# 6) Remove the subdirectory and its content under backups/YYYY-MM-DD/<first_subdir>
+aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir" --recursive
+
+echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
+```
