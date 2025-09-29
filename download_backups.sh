@@ -1,43 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Comprueba que nos pasan el nombre de la repo
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <repo-name>"
+# Usage: ./download_backups.sh <s3-bucket-name>
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <s3-bucket-name>"
   exit 1
 fi
 
-REPO="$1"
-BUCKET="tu-bucket-s3"
+# Bucket passed as first argument
+do
+  BUCKET="$1"
+  shift
 
-# 1) Obtener la carpeta de fecha más reciente en backups/
-latest_date_dir=$(aws s3 ls s3://"$BUCKET"/backups/ \
+done
+
+# 1) Get the most recent date directory in backups/
+latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" \
   | awk '{print $2}' \
   | sed 's:/$::' \
   | sort \
   | tail -n1)
 
+if [[ -z "$latest_date_dir" ]]; then
+  echo "No date directories found in s3://$BUCKET/backups/"
+  exit 1
+fi
+
 echo "Latest date directory: $latest_date_dir"
 
-# 2) Definir la carpeta de la repo pasada como argumento
-echo "Using repo directory: $REPO"
+# 2) Get the only subdirectory inside that date directory
+first_subdir=$(aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/" \
+  | awk '{print $2}' \
+  | sed 's:/$::')
 
-# 3) Fijar la ruta hasta home dentro de esa repo
-base_path="s3://$BUCKET/backups/$latest_date_dir/$REPO/home"
+echo "First subdirectory: $first_subdir"
 
-# 4) Recorrer cada carpeta cliente dentro de home/
-aws s3 ls "$base_path"/ \
+# 3) Define the "home" directory inside of it
+home_dir="home"
+
+# 4) Iterate over each client directory under backups/<date>/<subdir>/home/
+aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   | awk '{print $2}' \
   | sed 's:/$::' \
   | while read -r client_dir; do
       echo "Processing client: $client_dir"
 
-      # 5) Descargar backup.tar y renombrarlo a <client_dir>.tar
+      # 5) Download backup.tar and rename it to <client_dir>.tar
       aws s3 cp \
-        "$base_path/$client_dir/backup.tar" \
-        "./${client_dir}.tar"
+        "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
+        "${client_dir}.tar"
 
       echo "Downloaded and renamed: ${client_dir}.tar"
     done
 
-echo "All backups downloaded."
+echo "All backups downloaded to $(pwd)"
