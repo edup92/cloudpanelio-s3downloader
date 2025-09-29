@@ -8,6 +8,7 @@ This script automates the retrieval of backup archives (`backup.tar`) from an AW
 
 * **AWS CLI** installed and configured with valid credentials and appropriate permissions to access the target S3 bucket.
 * **Bash shell** (version 4+ recommended).
+* **Needs to be executed in local machine**
 
 ### Script Workflow
 
