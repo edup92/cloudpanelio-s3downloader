@@ -41,17 +41,16 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   | while read -r client_dir; do
       echo "Processing client: $client_dir"
 
-      # 5) Move (rename) backup.tar to home root as <client_dir>.tar
+      # 5) Move and rename backup.tar to the date root as <client_dir>.tar
       aws s3 mv \
         "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
-        "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/${client_dir}.tar"
+        "s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
 
-      echo "Moved and renamed: ${client_dir}.tar"
+      echo "Moved and renamed to s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
     done
 
-# 6) Remove all remaining subdirectories under home, leaving only .tar files
+# 6) Remove all remaining directories under home, leaving only .tar files
 aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
-  --recursive \
-  --exclude "*.tar"
+  --recursive
 
-echo "Cleanup complete: only .tar files remain under home."
+echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
