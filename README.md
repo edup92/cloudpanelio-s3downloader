@@ -35,5 +35,5 @@ This script automates the retrieval of backup archives (`backup.tar`) from an AW
 ### How to run
 
  ```bash
- git clone https://github.com/edup92/cloudpanelio-s3downloader.git ; chmod +x download_backups.sh ; ./download_backups.sh <bucket-name>
+ git clone https://github.com/edup92/cloudpanelio-s3downloader.git ; chmod +x cloudpanelio-s3downloader/download_backups.sh ; ./cloudpanelio-s3downloader/download_backups.sh <bucket-name>
  ```
