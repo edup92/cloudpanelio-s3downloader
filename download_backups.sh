@@ -1,9 +1,10 @@
+```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./download_backups.sh <source-s3-bucket>
+# Usage: ./download_backups.sh <s3-bucket-name>
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <s3-bucket>"
+  echo "Usage: $0 <s3-bucket-name>"
   exit 1
 fi
 
@@ -49,8 +50,8 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
       echo "Moved and renamed to s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
     done
 
-# 6) Remove all remaining directories under home, leaving only .tar files
-aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
-  --recursive
+# 6) Remove the subdirectory and its content under backups/YYYY-MM-DD/<first_subdir>
+aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir" --recursive
 
 echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
+```
