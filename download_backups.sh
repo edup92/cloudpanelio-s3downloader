@@ -8,11 +8,7 @@ if [[ $# -lt 1 ]]; then
 fi
 
 # Bucket passed as first argument
-do
-  BUCKET="$1"
-  shift
-
-done
+BUCKET="$1"
 
 # 1) Get the most recent date directory in backups/
 latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" \
