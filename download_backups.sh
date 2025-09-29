@@ -8,7 +8,10 @@ if [[ $# -ne 1 ]]; then
 fi
 
 BUCKET="$1"
-OUTPUT_FILE="presign_urls.txt"
+
+acortar_url() {
+  curl -s "https://tinyurl.com/api-create.php?url=$1"
+}
 
 # 1) Get the most recent date directory under backups/
 latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" | awk '{print $2}' | sed 's:/$::' | sort | tail -n1)
@@ -34,7 +37,6 @@ echo "First subdirectory: $first_subdir"
 home_dir="home"
 
 # 4) Iterate over each client directory under backups/<date>/<subdir>/home/
-> "$OUTPUT_FILE"
 aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   | awk '{print $2}' | sed 's:/$::' | while read -r client_dir; do
   echo "Processing client: $client_dir"
@@ -42,8 +44,6 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   tar_path="backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar"
   presign_url=$(aws s3 presign "s3://$BUCKET/$tar_path")
 
-  echo "$presign_url"
-  echo "$presign_url" >> "$OUTPUT_FILE"
+  short_url=$(acortar_url "$presign_url")
+  echo "$short_url"
 done
-
-echo "Presigned URLs saved to $OUTPUT_FILE"
