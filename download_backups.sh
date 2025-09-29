@@ -2,21 +2,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./download_backups.sh <s3-bucket-name>
+# Usage: ./generate_presign_urls.sh <s3-bucket-name>
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <s3-bucket-name>"
   exit 1
 fi
 
-# Bucket passed as argument
 BUCKET="$1"
+OUTPUT_FILE="presign_urls.txt"
 
-# 1) Get the most recent date directory in backups/
+# 1) Find the most recent date directory under backups/
 latest_date_dir=$(aws s3 ls "s3://$BUCKET/backups/" \
-  | awk '{print $2}' \
-  | sed 's:/$::' \
-  | sort \
-  | tail -n1)
+  | awk '{print $2}' | sed 's:/$::' | sort | tail -n1)
 
 if [[ -z "$latest_date_dir" ]]; then
   echo "No date directories found in s3://$BUCKET/backups/"
@@ -25,33 +22,26 @@ fi
 
 echo "Latest date directory: $latest_date_dir"
 
-# 2) Get the only subdirectory inside that date directory
+# 2) Identify the only subdirectory under that date
 first_subdir=$(aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/" \
-  | awk '{print $2}' \
-  | sed 's:/$::')
+  | awk '{print $2}' | sed 's:/$::')
 
 echo "First subdirectory: $first_subdir"
 
-# 3) Define the "home" directory inside of it
+# 3) Set home directory
 home_dir="home"
 
-# 4) Iterate over each client directory under backups/<date>/<subdir>/home/
-aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
-  | awk '{print $2}' \
-  | sed 's:/$::' \
-  | while read -r client_dir; do
-      echo "Processing client: $client_dir"
+# 4) List all backup.tar files under the path
+keys=$(aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
+  --recursive | awk '{print $4}' | grep 'backup\.tar$')
 
-      # 5) Move and rename backup.tar to the date root as <client_dir>.tar
-      aws s3 mv \
-        "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
-        "s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
+# 5) Generate presigned URLs
+echo "Generating presigned URLs into $OUTPUT_FILE"
+: > "$OUTPUT_FILE"
+for key in $keys; do
+  presign=$(aws s3 presign "s3://$BUCKET/$key")
+  echo "$presign" >> "$OUTPUT_FILE"
+done
 
-      echo "Moved and renamed to s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
-    done
-
-# 6) Remove the subdirectory and its content under backups/YYYY-MM-DD/<first_subdir>
-aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir" --recursive
-
-echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
+echo "Done. Presigned URLs saved to $OUTPUT_FILE"
 ```
