@@ -41,15 +41,12 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
   | while read -r client_dir; do
       echo "Processing client: $client_dir"
 
-      # 5) Move and rename backup.tar to the date root as <client_dir>.tar
-      aws s3 mv \
+      # 5) Download backup.tar locally as <client_dir>.tar
+      aws s3 cp \
         "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/$client_dir/backup.tar" \
-        "s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
+        "./${client_dir}.tar"
 
-      echo "Moved and renamed to s3://$BUCKET/backups/$latest_date_dir/${client_dir}.tar"
+      echo "Downloaded as ./${client_dir}.tar"
     done
 
-# 6) Remove the subdirectory and its content under backups/YYYY-MM-DD/<first_subdir>
-aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir" --recursive
-
-echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
+echo "Process complete."
