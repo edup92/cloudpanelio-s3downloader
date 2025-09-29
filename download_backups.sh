@@ -1,4 +1,3 @@
-```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -54,4 +53,3 @@ aws s3 ls "s3://$BUCKET/backups/$latest_date_dir/$first_subdir/$home_dir/" \
 aws s3 rm "s3://$BUCKET/backups/$latest_date_dir/$first_subdir" --recursive
 
 echo "Cleanup complete: only .tar files remain under s3://$BUCKET/backups/$latest_date_dir/"
-```
